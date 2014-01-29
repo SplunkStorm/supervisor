@@ -54,7 +54,7 @@ action :start do
   else
     converge_by("Starting #{ new_resource }") do
       result = supervisorctl('start')
-      if !result.match(/#{new_resource.name}: started$/)
+      if !result.match(/#{new_resource.name}(-\d+)?: started$/)
         raise "Supervisor service #{new_resource.name} was unable to be started: #{result}"
       end
       new_resource.updated_by_last_action(true)
@@ -75,7 +75,7 @@ action :stop do
   else
     converge_by("Stopping #{ new_resource }") do
       result = supervisorctl('stop')
-      if !result.match(/#{new_resource.name}: stopped$/)
+      if !result.match(/#{new_resource.name}(-\d+)?: stopped$/)
         raise "Supervisor service #{new_resource.name} was unable to be stopped: #{result}"
       end
       Chef::Log.info "#{ new_resource } stopped."
@@ -91,7 +91,7 @@ action :restart do
   else
     converge_by("Restarting #{ new_resource }") do
       result = supervisorctl('restart')
-      if !result.match(/^#{new_resource.name}: started$/)
+      if !result.match(/^#{new_resource.name}(-\d+)?: started$/)
         raise "Supervisor service #{new_resource.name} was unable to be started: #{result}"
       end
       Chef::Log.info "Supervisor service #{new_resource.name} was restarted."
@@ -149,18 +149,25 @@ def cmd_line_args
 end
 
 def get_current_state(service_name)
-  cmd = "supervisorctl status #{service_name}"
+  cmd = "supervisorctl status | grep '#{service_name}[: ]'"
   result = Mixlib::ShellOut.new(cmd).run_command
-  stdout = result.stdout
-  if stdout.include? "No such process #{service_name}"
+  stdout = result.stdout.strip
+
+  if stdout.length == 0
     "UNAVAILABLE"
   else
-    match = stdout.match("(^#{service_name}\\s*)([A-Z]+)(.+)")
-    if match.nil?
+    require 'set'
+    states = Set.new
+    valid_states = Set.new(['STOPPED', 'STOPPING', 'STARTING', 'BACKOFF', 'EXITED', 'FATAL', 'RUNNING'])
+    stdout.scan(/(^#{service_name}(:\S+)?\s*)([A-Z]+)/) {|match| states.add(match[2]) if valid_states.include?(match[2]) }
+
+    if states.empty?
       raise "The supervisor service is not running as expected. " \
               "The command '#{cmd}' output:\n----\n#{stdout}\n----"
     end
-    match[2]
+
+    state = states.size() == 1 ? states.to_a[0] : 'MIXED'
+    state
   end
 end
 
