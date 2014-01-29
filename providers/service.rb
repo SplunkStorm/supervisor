@@ -19,17 +19,23 @@
 #
 
 action :enable do
-  converge_by("Enabling #{ new_resource }") do
-    enable_service
+  if current_resource.state != 'UNAVAILABLE'
+    Chef::Log.debug "#{new_resource} is already enabled."
+  else
+    converge_by("Enabling #{ new_resource }") do
+      enable_service
+      Chef::Log.info "#{ new_resource } enabled."
+    end
   end
 end
 
 action :disable do
   if current_resource.state == 'UNAVAILABLE'
-    Chef::Log.info "#{new_resource} is already disabled."
+    Chef::Log.debug "#{new_resource} is already disabled."
   else
     converge_by("Disabling #{new_resource}") do
       disable_service
+      Chef::Log.info "#{ new_resource } disabled."
     end
   end
 end
@@ -49,6 +55,7 @@ action :start do
       if !result.match(/#{new_resource.name}: started$/)
         raise "Supervisor service #{new_resource.name} was unable to be started: #{result}"
       end
+      Chef::Log.info "#{ new_resource } started."
     end
   end
 end
@@ -68,6 +75,7 @@ action :stop do
       if !result.match(/#{new_resource.name}: stopped$/)
         raise "Supervisor service #{new_resource.name} was unable to be stopped: #{result}"
       end
+      Chef::Log.info "#{ new_resource } stopped."
     end
   end
 end
@@ -82,6 +90,7 @@ action :restart do
       if !result.match(/^#{new_resource.name}: started$/)
         raise "Supervisor service #{new_resource.name} was unable to be started: #{result}"
       end
+      Chef::Log.info "Supervisor service #{new_resource.name} was restarted."
     end
   end
 end
