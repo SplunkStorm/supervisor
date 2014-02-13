@@ -159,7 +159,13 @@ def get_current_state(service_name)
     require 'set'
     states = Set.new
     valid_states = Set.new(['STOPPED', 'STOPPING', 'STARTING', 'BACKOFF', 'EXITED', 'FATAL', 'RUNNING'])
-    stdout.scan(/(^#{service_name}(:\S+)?\s*)([A-Z]+)/) {|match| states.add(match[2]) if valid_states.include?(match[2]) }
+
+    if @new_resource.group_name
+      re = Regexp.new(/(^#{@new_resource.group_name}:#{service_name}(:\S+)?\s*)([A-Z]+)/)
+    else
+      re = Regexp.new(/(^#{service_name}(:\S+)?\s*)([A-Z]+)/)
+    end
+    stdout.scan(re) {|match| states.add(match[2]) if valid_states.include?(match[2]) }
 
     if states.empty?
       raise "The supervisor service is not running as expected. " \

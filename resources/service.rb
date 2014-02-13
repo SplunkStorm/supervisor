@@ -24,6 +24,7 @@ default_action :enable
 attribute :service_name, :kind_of => String, :name_attribute => true
 attribute :command, :kind_of => String
 attribute :process_name, :kind_of => String, :default => '%(program_name)s'
+attribute :group_name, :kind_of => String, :default => nil
 attribute :numprocs, :kind_of => Integer, :default => 1
 attribute :numprocs_start, :kind_of => Integer, :default => 0
 attribute :priority, :kind_of => Integer, :default => 999
